@@ -1,0 +1,8 @@
+streamlit
+torch
+transformers
+groq
+python-dotenv
+pandas
+plotly
+reportlab

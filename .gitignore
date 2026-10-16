@@ -1,0 +1,25 @@
+
+# Python environment and cache
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Model checkpoint - keep out of ordinary Git commits
+dep/model/*.pt
+*.pth
+*.ckpt
+
+# Local editor and OS files
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs and generated outputs
+*.log
