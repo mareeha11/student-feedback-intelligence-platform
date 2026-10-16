@@ -2,6 +2,9 @@ import os
 import torch
 import torch.nn as nn
 import streamlit as st
+
+from huggingface_hub import hf_hub_download
+
 from transformers import (
     DistilBertModel,
     DistilBertTokenizerFast
@@ -34,7 +37,37 @@ SENTIMENT_MAP = {
     2: "Positive"
 }
 
+
 MODEL_PATH = "dep/model/best_distilbert_model.pt"
+MODEL_REPO_ID = "mareeha11/student-feedback-distilbert"
+MODEL_FILENAME = "best_distilbert_model.pt"
+
+
+def resolve_model_path():
+    # Keep using the local checkpoint when it exists.
+    if os.path.isfile(MODEL_PATH):
+        return MODEL_PATH
+
+    # Otherwise, retrieve the private checkpoint from Hugging Face.
+    token = os.getenv("HF_TOKEN")
+
+    if not token:
+        try:
+            token = st.secrets.get("HF_TOKEN")
+        except Exception:
+            token = None
+
+    if not token:
+        raise RuntimeError(
+            "The trained model is unavailable locally. "
+            "Configure HF_TOKEN in the app's deployment secrets."
+        )
+
+    return hf_hub_download(
+        repo_id=MODEL_REPO_ID,
+        filename=MODEL_FILENAME,
+        token=token,
+    )
 
 # =====================================================================
 # DEEP NEURAL NETWORK ARCHITECTURE: SHARED ENCODER MULTI-TASK LEARNING
@@ -63,19 +96,27 @@ class DistilBERTMultiTaskModel(nn.Module):
 # =====================================================================
 # DECOUPLED CORE MODEL CACHING LAYER (FIXES CIRCULAR IMPORT ERROR)
 # =====================================================================
+
 @st.cache_resource
 def initialize_deep_learning_backbone():
-    """Loads and caches the multi-task transformer architecture weight matrix safely."""
+    """Loads and caches the trained multi-task model."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = DistilBERTMultiTaskModel()
-    
-    state_dict = torch.load(MODEL_PATH, map_location=device)
+
+    state_dict = torch.load(
+        resolve_model_path(),
+        map_location=device,
+        weights_only=True,
+    )
     model.load_state_dict(state_dict)
     model.to(device)
     model.eval()
-    
-    tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
+
+    tokenizer = DistilBertTokenizerFast.from_pretrained(
+        "distilbert-base-uncased"
+    )
     return model, tokenizer, device
+
 
 # =====================================================================
 # INFERENCE EXECUTION PIPELINE FUNCTION
